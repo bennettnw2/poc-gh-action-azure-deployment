@@ -1,0 +1,43 @@
+name: single_resource_parameter_deployment
+
+on:
+  push:
+    paths:
+      - 'applications/**'
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+        #   ref: main
+        # add this when it is ready; we'll checkout the main branch as that will be the source of truth
+        # for now we are using the `pipeline-check` branch
+
+      - name: Deploy Template with Parameter File
+        run: |
+          PARAM_FILE=$(git diff --name-only HEAD HEAD~1)
+          echo $PARAM_FILE
+          # TODO: add a check to see if we got what we need or not; ie: too many or not enough
+          # TODO: need to be able to handle multiple files that are changed; use `nb_rbac_resourcetype/nb-rbac-keyvault/nb-rbac-keyvault-build-deploy.yml` in GCInfraOnCloud Repo as an example
+          # TODO: Find out which environment each file is for and then grab the appropriate parameter file? No because we are already using the parameter files...
+
+          RESOURCE=$(basename "$PARAM_FILE" | cut -d'-' -f1)
+          echo $RESOURCE
+
+          TEMPLATE_FILE="deployment-templates/$RESOURCE-deployment.yml"
+          echo $TEMPLATE_FILE
+
+          RG=$(cat "$PARAM_FILE" | jq -r '.parameters.keyVaultObject.metadata.resourceGroup')
+          echo $RG
+
+          az login ...
+
+          az deployment group create \
+            --resource-group $RG \
+            --template-file $TEMPLATE_FILE \
+            --parameters $PARAM_FILE

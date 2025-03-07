@@ -1,0 +1,131 @@
+name: nbinfra-poc
+
+on:
+  workflow_dispatch:
+    #  push:
+    #    paths:
+    #      - 'applications/**'
+    #      - 'deployment-templates/**'
+
+jobs:
+  set-env-vars:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 10
+
+      - name: Get modified files
+        id: get_modified_files
+        run: |
+          # Get the list of modified files
+          modified_files=$(git diff --name-only HEAD HEAD~1)
+          echo "Modified files: $modified_files"
+          mkdir output_files
+          
+          # Initialize variables
+          #          storage_files=() <- not used?
+          #          keyvault_files=() <- not used?
+          #          resource_types=()
+          #          deploy_file=false
+
+          # Loop through modified files and categorize them
+          for file in $modified_files; do
+            if [[ $file == applications/* ]]; then
+              resource=$(basename "$file" | cut -d'-' -f1)
+              resource_types+=("${resource}")
+              echo "$file" >> "./output_files/${resource}_files.txt"
+            elif [[ $file == deployment-templates/* ]]; then
+              fname=$(basename "$file")
+              resource_type="${fname%%-*}"  
+              export deploy_file=true #<- why is this done twice? May not need to be exported?
+              export deploy_${resource_type}=TRUE #<- once in the vm and another for the github env file
+              echo "DEPLOY_FILE=TRUE" >> "$GITHUB_ENV"
+              echo "DEPLOY_${resource_type}=TRUE" >> "$GITHUB_ENV"
+            fi
+          done
+
+          #Get Parameter files for Changes in  Deployment Templates
+          if [ "$deploy_file" = true ]; then
+            echo "Checking deploy files"
+            declare -A resource_files
+            for var in $(printenv | grep '^deploy_'); do
+              var_name=$(echo "$var" | cut -d '=' -f 1)
+              var_value=$(echo "$var" | cut -d '=' -f 2)
+              if [[ "$var_value" == "TRUE" ]]; then
+                resource_type=${var_name#deploy_}  # Remove 'deploy_' prefix
+                resource_files["${resource_type}_files"]=""  # Initialize as an empty string
+                for app_file in $(find applications/* -type f -name "${resource_type}*"); do
+                  echo "$app_file"
+                  resource_types+=("${resource_type}")
+                  resource_files["${resource_type}_files"]+="$app_file"
+                done
+              fi
+            done
+            for resource in "${!resource_files[@]}"; do
+              IFS=' ' read -r -a files <<< "${resource_files[$resource]}"
+              printf "%s\n" "${files[@]}" > ./output_files/"${resource}.txt"
+            done
+          fi
+
+          # Set output for the Matrix Job
+          json_array=$(printf '["%s"]' "$(printf "%s\n" "${resource_types[@]}" | sort -u | tr '\n' ',' | sed 's/,$//; s/,/","/g')")
+          echo "resource_types=$json_array" >> $GITHUB_OUTPUT
+          echo "DEPLOY_FILE=$deploy_file" >> $GITHUB_OUTPUT
+
+      - name: Upload all artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-artifacts
+          path: output_files/*
+
+    outputs:
+      resource_types: ${{ steps.get_modified_files.outputs.resource_types }}
+
+  call-workflow:
+    runs-on: mmc-ubuntu
+    needs: set-env-vars
+    if: ${{ needs.set-env-vars.outputs.resource_types != '' }}
+    strategy:
+      matrix:
+        resourceVar: ${{ fromJson(needs.set-env-vars.outputs.resource_types) }}
+    env:
+      GH_TOKEN: ${{ github.token }} # <- I think token is already inplied
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Download all artifacts # <- which artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: all-artifacts
+          path: output_files/
+  
+      - name: Call reusable workflow for ${{ matrix.resourceVar }} files
+        run: |
+          #IFS=' ' read -r -a files <<< "$(cat ./output_files/${{ matrix.resourceVar }}_files.txt)"
+          files=$(tr '\n' ' ' < ./output_files/${{ matrix.resourceVar }}_files.txt)
+          IFS=' ' read -r -a files_array <<< "$files"
+          for file in "${files_array[@]}"; do
+          #for file in "${files[@]}"; do
+            # Extract region, environment, and subscription from the file path
+            IFS='/' read -r -a path_parts <<< "$file"
+            region=${path_parts[2]}
+            env=${path_parts[3]}
+            subscription=$(basename "$file" | cut -d'-' -f2)
+            echo "Region: $region, Environment: $env, Subscription: $subscription"
+            # Call the reusable workflow with the extracted values
+            # Look up how to call a workflow properly so that it is incorporated into the pipeline
+            # A: `uses .github/workflows/[keyvault].yml`   make sure workflow_call is in the keyvault.yml file
+            #            gh workflow run .github/workflows/${{ matrix.resourceVar }}.yml \
+            #              --field file="$file" \
+            #              --field region="$region" \
+            #              --field env="$env" \
+            #              --field subscription="$subscription"
+          done
+#"storage.nbAppEnv.value.Metadata.deploymentTemplate": "nb-sa-test-dev-rg"
+#"storage.nbAppEnv.value.Metadata.resourceGroup": "nb-sa-test-dev-rg"
+#"parameters.functionList.Metadata.resourceGroup": "nb-apim-nasa-dev-rg",
+#"appconfig.configList.Metadata.resourceGroup": "nb-nbmp2-emea-sit-rg",
+#"keyvault.keyVaultObject.metadata.resourceGroup": "nb-kv-emea-dev-rg",
