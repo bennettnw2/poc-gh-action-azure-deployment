@@ -1,6 +1,7 @@
 name: single_resource_parameter_deployment
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'applications/**'
@@ -17,6 +18,10 @@ jobs:
         #   ref: main
         # add this when it is ready; we'll checkout the main branch as that will be the source of truth
         # for now we are using the `pipeline-check` branch
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDS }}
 
       - name: Deploy Template with Parameter File
         run: |

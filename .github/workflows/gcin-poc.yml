@@ -84,7 +84,7 @@ jobs:
       resource_types: ${{ steps.get_modified_files.outputs.resource_types }}
 
   call-workflow:
-    runs-on: mmc-ubuntu
+    runs-on: ubuntu-latest
     needs: set-env-vars
     if: ${{ needs.set-env-vars.outputs.resource_types != '' }}
     strategy:
