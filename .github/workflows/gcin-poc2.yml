@@ -22,6 +22,8 @@ jobs:
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDS }}
+      - name: Check Azure Login
+        run: az account list -o table
 
       - name: Deploy Template with Parameter File
         run: |
