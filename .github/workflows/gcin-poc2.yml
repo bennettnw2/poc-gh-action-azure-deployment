@@ -34,13 +34,13 @@ jobs:
           RESOURCE=$(basename "$PARAM_FILE" | cut -d'-' -f1)
           echo $RESOURCE
 
-          TEMPLATE_FILE="deployment-templates/$RESOURCE-deployment.yml"
+          TEMPLATE_FILE="deployment-templates/$RESOURCE-deployment.json"
           echo $TEMPLATE_FILE
 
           RG=$(cat "$PARAM_FILE" | jq -r '.parameters.keyVaultObject.metadata.resourceGroup')
           echo $RG
 
-          az deployment group create \
-            --resource-group $RG \
-            --template-file $TEMPLATE_FILE \
-            --parameters $PARAM_FILE
+          #          az deployment group create \
+          #            --resource-group $RG \
+          #            --template-file $TEMPLATE_FILE \
+          #            --parameters $PARAM_FILE
