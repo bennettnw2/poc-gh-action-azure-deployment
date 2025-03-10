@@ -5,7 +5,16 @@
     "storageName": {
       "type": "string",
       "minLength": 3,
-      "maxLength": 24
+      "maxLength": 24,
+      "metadata": {
+        "description": "Name of the storage account"
+      }
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the resource group"
+      }
     }
   },
   "resources": [
