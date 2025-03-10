@@ -40,7 +40,7 @@ jobs:
           TEMPLATE_FILE="deployment-templates/$RESOURCE-deployment.json"
           echo $TEMPLATE_FILE
 
-          RG=$(cat "$PARAM_FILE" | jq -r '.parameters.resourceGroupName')
+          RG=$(cat "$PARAM_FILE" | jq -r '.parameters.resourceGroupName.value')
           echo $RG
 
           az deployment group create \
