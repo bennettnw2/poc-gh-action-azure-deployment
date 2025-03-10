@@ -40,7 +40,7 @@ jobs:
           RG=$(cat "$PARAM_FILE" | jq -r '.parameters.keyVaultObject.metadata.resourceGroup')
           echo $RG
 
-          #          az deployment group create \
-          #            --resource-group $RG \
-          #            --template-file $TEMPLATE_FILE \
-          #            --parameters $PARAM_FILE
+          az deployment group create \
+            --resource-group $RG \
+            --template-file $TEMPLATE_FILE \
+            --parameters $PARAM_FILE
