@@ -6,13 +6,7 @@
       "value": "nb-kv-test-dev-rg"
     },
     "storageName": {
-      "value": "nbcodirectorystgacct"
-      },
-    "storageName": {
-      "value": "nbcodirectorystgacct2"
-      },
-    "storageName": {
-      "value": "nbcodirectorystgacct3"
+      "value": "nbcodirectorystgacct8"
       }
   }
 }
