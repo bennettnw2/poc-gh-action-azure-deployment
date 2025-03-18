@@ -5,7 +5,7 @@
         "keyVaultObject": {
             "metadata":{
                     "resourceGroup": "nb-kv-test-dev-rg",
-                    "description": "Raa Name for KV used in pipeline."
+                    "description": "Ria Name for KV used in pipeline."
             }
         }
     }
