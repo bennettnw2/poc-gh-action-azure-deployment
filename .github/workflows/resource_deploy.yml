@@ -1,0 +1,51 @@
+name: resource_parameter_deployment
+
+on:
+  push:
+    paths:
+      - 'applications/**'
+
+jobs:
+  setup:
+    runs-on: mmc-ubuntu
+    steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+        #   ref: main
+        # add this when it is ready; we'll checkout the main branch as that will be the source of truth
+        # for now we are using the `pipeline-check` branch
+
+      - name: Deploy Template with Parameter File
+        run: |
+          deploy_resource() {
+            az deployment group create \
+            --resource group $RG \
+            --template-file $TEMPLATE_FILE \
+            --parameters $PARAM_FILE
+          }
+          echo_results() {
+            echo "------------------------------"
+            echo "file    : $PARAM_FILE"
+            echo "resource: $RESOURCE"
+            echo "template: $TEMPLATE_FILE"
+            echo "group   : $RG"
+          }
+
+          for PARAM_FILE in $(git diff --name-only HEAD HEAD~1); do
+            if [[ $PARAM_FILE == applications/* ]]; then
+
+              RESOURCE=$(basename "$PARAM_FILE" | cut -d'-' -f1)
+              TEMPLATE_FILE="deployment-templates/$RESOURCE-deployment.yml"
+              # TODO: Need better way to get proper resource group
+              RG=$(cat "$PARAM_FILE" | jq -r '.parameters.keyVaultObject.metadata.resourceGroup')
+
+              echo_results
+              # deploy_resource
+            else
+              echo "The file, $PARAM_FILE is not my file to process."
+            fi
+          done 
+
